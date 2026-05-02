@@ -201,6 +201,39 @@ class _CalcScreenState extends State<CalcScreen> {
     );
   }
 
+  void _restoreFromHistory(HistoryEntry e) {
+    final profile = profiles.firstWhere(
+      (p) => p.name == e.profileName,
+      orElse: () => _profile,
+    );
+    final parts = e.materialLabel.split(' · ');
+    MetalMaterial material = _material;
+    if (parts.length == 2) {
+      final grade = parts[1];
+      final found = materials.where((m) => m.grade == grade).toList();
+      if (found.isNotEmpty) material = found.first;
+    }
+    setState(() { _profile = profile; _material = material; });
+    _rebuild();
+    setState(() {
+      for (final p in profile.params) {
+        final v = e.inputs[p.key];
+        if (v != null) { _values[p.key] = v; _ctrl[p.key]?.text = _fmt(v); }
+      }
+      final length = e.inputs[kLength];
+      if (length != null && length != 0) {
+        _values[kLength] = length; _ctrl[kLength]?.text = _fmt(length);
+      }
+      if (e.result.target != CalcTarget.mass) {
+        final mass = e.inputs[kMass];
+        if (mass != null && mass != 0) {
+          _values[kMass] = mass; _ctrl[kMass]?.text = _fmt(mass);
+        }
+      }
+      _qty = (e.inputs[kQuantity] ?? 1).toInt();
+    });
+  }
+
   void _calculate() {
     final inputs = Map<String, double?>.from(_values);
     inputs[kQuantity] = _qty.toDouble();
