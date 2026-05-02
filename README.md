@@ -57,4 +57,3 @@ assets/icons/                 — SVG иконки сортамента
 - Длина и Масса — только клавиатура
 =======
 # kalkulator-metalla-pro
->>>>>>> 65dc330f642854c7a6cca1aef94cc6788f4e9dee
