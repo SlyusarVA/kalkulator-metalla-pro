@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+  <rect width="80" height="80" fill="white"/>
+  
+  <polyline points="15,25 45,25 45,38 65,38 65,55 35,55 35,42 15,42" 
+            fill="#e8e8e8" stroke="#555" stroke-width="2" stroke-linejoin="round"/>
+  <text x="8" y="38" text-anchor="middle" font-size="8" fill="#888">h</text>
+  <text x="40" y="78" text-anchor="middle" font-size="9" fill="#888">b</text>
+
+</svg>

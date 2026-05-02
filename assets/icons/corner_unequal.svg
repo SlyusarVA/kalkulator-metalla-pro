@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+  <rect width="80" height="80" fill="white"/>
+  
+  <polygon points="15,65 15,18 23,18 23,57 65,57 65,65" fill="#e8e8e8" stroke="#555" stroke-width="1.8"/>
+  <text x="8" y="38" text-anchor="end" font-size="8" fill="#888">a</text>
+  <text x="55" y="74" text-anchor="middle" font-size="8" fill="#888">b</text>
+  <text x="30" y="52" font-size="8" fill="#888">t</text>
+
+</svg>
