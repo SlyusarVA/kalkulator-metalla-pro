@@ -19,7 +19,6 @@ const Map<String, _MetalColor> _metalColors = {
   'Цинк':       _MetalColor(bg: Color(0xFF78909C), text: Color(0xFF1A1A1A)),
   'Цирконий':   _MetalColor(bg: Color(0xFF607D8B), text: Color(0xFFFFFFFF)),
 };
-
 class _MetalColor {
   final Color bg;
   final Color text;
@@ -34,7 +33,6 @@ class DrumPicker<T> extends StatefulWidget {
   final ValueChanged<T> onChanged;
   final double itemHeight;
   final String? Function(T)? groupKey;
-
   const DrumPicker({
     super.key,
     required this.items,
@@ -44,7 +42,6 @@ class DrumPicker<T> extends StatefulWidget {
     this.itemHeight = 48,
     this.groupKey,
   });
-
   @override
   State<DrumPicker<T>> createState() => _DrumPickerState<T>();
 }
@@ -92,7 +89,9 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
 
     return SizedBox(
       height: widget.itemHeight * 5,
-      child: Stack(children: [
+      child: Stack(
+        children: [
+          // 1. Барабан — свободное вращение с инерцией
           ListWheelScrollView.useDelegate(
             controller: _ctrl,
             itemExtent: widget.itemHeight,
@@ -111,7 +110,6 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
                 final label = widget.labelBuilder(widget.items[i]);
                 final grpKey = widget.groupKey?.call(widget.items[i]);
                 final mc = grpKey != null ? _metalColors[grpKey] : null;
-
                 Color textColor;
                 Color? rowBg;
                 if (sel && mc != null) {
@@ -124,16 +122,7 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
                       ? cs.onSurface.withOpacity(0.28)
                       : cs.onSurface.withOpacity(0.22);
                 }
-
-                return GestureDetector(
-                  onTap: sel ? null : () {
-                    // Прокручиваем прямо к этому элементу
-                    HapticFeedback.selectionClick();
-                    _ctrl.animateToItem(i,
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeOut);
-                  },
-                  child: Container(
+                return Container(
                   margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   decoration: rowBg != null
                       ? BoxDecoration(
@@ -153,27 +142,46 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
                       ),
                     ),
                   ),
-                ),
                 );
               },
             ),
           ),
 
-          // Градиенты
+          // 2. Слой обработки тапов по Y-координате
+          // HitTestBehavior.translucent — drag проходит насквозь к ListWheelScrollView
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTapDown: (details) {
+                final dy = details.localPosition.dy;
+                final centerY = widget.itemHeight * 2.5;
+                final offsetItems = ((dy - centerY) / widget.itemHeight).round();
+                final targetIndex = (_idx + offsetItems).clamp(0, widget.items.length - 1);
+                if (targetIndex != _idx && _ctrl.hasClients) {
+                  HapticFeedback.selectionClick();
+                  _ctrl.animateToItem(
+                    targetIndex,
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOut,
+                  );
+                }
+              },
+            ),
+          ),
+
+          // 3. Градиенты сверху/снизу
           Positioned(top: 0, left: 0, right: 0, height: widget.itemHeight * 2,
-            child: IgnorePointer(child: Container(decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                colors: [bg, bg.withOpacity(0)],
+              child: IgnorePointer(child: Container(decoration: BoxDecoration(
+                gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                    colors: [bg, bg.withOpacity(0)],
               ))))),
           Positioned(bottom: 0, left: 0, right: 0, height: widget.itemHeight * 2,
-            child: IgnorePointer(child: Container(decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter, end: Alignment.topCenter,
-                colors: [bg, bg.withOpacity(0)],
+              child: IgnorePointer(child: Container(decoration: BoxDecoration(
+                gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter,
+                    colors: [bg, bg.withOpacity(0)],
               ))))),
 
-          // Линии + стрелка Tabler
+          // 4. Линии + стрелка по центру
           Positioned(
             top: widget.itemHeight * 2,
             left: 0, right: 0,
@@ -193,7 +201,8 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
               ],
             )),
           ),
-        ]),
+        ],
+      ),
     );
   }
 }
@@ -202,7 +211,6 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
 class _ConfirmButton extends StatelessWidget {
   final VoidCallback onPressed;
   const _ConfirmButton({required this.onPressed});
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -216,11 +224,7 @@ class _ConfirmButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          TIcon(
-            isDark ? 'circle-check-filled' : 'circle-check',
-            size: 20,
-            color: cs.onPrimary,
-          ),
+          TIcon(isDark ? 'circle-check-filled' : 'circle-check', size: 20, color: cs.onPrimary),
           const SizedBox(width: 8),
           Text('Выбрать', style: TextStyle(
             fontSize: 15, fontWeight: FontWeight.w600,
@@ -232,7 +236,7 @@ class _ConfirmButton extends StatelessWidget {
   }
 }
 
-// ── Диалог по центру: одиночный барабан ──────────────────────────────────────
+// ── Диалог: одиночный барабан ─────────────────────────────────────────────────
 Future<void> showSingleDrumDialog<T>({
   required BuildContext context,
   required String title,
@@ -244,7 +248,6 @@ Future<void> showSingleDrumDialog<T>({
 }) {
   HapticFeedback.mediumImpact();
   T cur = selected ?? items.first;
-
   return showDialog(
     context: context,
     barrierColor: Colors.black54,
@@ -259,10 +262,8 @@ Future<void> showSingleDrumDialog<T>({
             width: MediaQuery.of(ctx).size.width * 0.88,
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               const SizedBox(height: 16),
-              Text(title, style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w600,
-                fontFamily: 'Manrope', color: cs.onSurface,
-              )),
+              Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600,
+                  fontFamily: 'Manrope', color: cs.onSurface)),
               const SizedBox(height: 8),
               const Divider(height: 1),
               DrumPicker<T>(
@@ -285,7 +286,7 @@ Future<void> showSingleDrumDialog<T>({
   );
 }
 
-// ── Диалог по центру: двойной барабан (металл + марка) ───────────────────────
+// ── Диалог: двойной барабан (металл + марка) ──────────────────────────────────
 Future<void> showTwoDrumDialog({
   required BuildContext context,
   required List<String> groups,
@@ -300,7 +301,6 @@ Future<void> showTwoDrumDialog({
   String curGroup = selectedGroup;
   String curGrade = selectedGrade;
   List<String> curGrades = List.from(grades);
-
   return showDialog(
     context: context,
     barrierColor: Colors.black54,
@@ -315,10 +315,8 @@ Future<void> showTwoDrumDialog({
             width: MediaQuery.of(ctx).size.width * 0.92,
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               const SizedBox(height: 16),
-              Text('Металл и марка', style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w600,
-                fontFamily: 'Manrope', color: cs.onSurface,
-              )),
+              Text('Металл и марка', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600,
+                  fontFamily: 'Manrope', color: cs.onSurface)),
               const SizedBox(height: 8),
               const Divider(height: 1),
               Row(children: [
@@ -327,7 +325,6 @@ Future<void> showTwoDrumDialog({
                   labelBuilder: (s) => s,
                   groupKey: (s) => s,
                   onChanged: (g) async {
-                    // Загружаем марки с учётом порядка из настроек
                     final newGrades = gradeLoader != null
                         ? await gradeLoader(g)
                         : gradesForGroup(g).map((m) => m.grade).toList();

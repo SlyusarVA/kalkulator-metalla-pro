@@ -201,6 +201,19 @@ class _CalcScreenState extends State<CalcScreen> {
     );
   }
 
+  // Очищает поле которое было результатом предыдущего расчёта
+  void _clearPrevResultField() {
+    if (_prevResult == null) return;
+    if (_prevResult!.target == CalcTarget.mass) {
+      _ctrl[kMass]?.clear();
+      _values[kMass] = null;
+    } else if (_prevResult!.target == CalcTarget.length) {
+      _ctrl[kLength]?.clear();
+      _values[kLength] = null;
+    }
+    _prevResult = null;
+  }
+
   void _restoreFromHistory(HistoryEntry e) {
     final profile = profiles.firstWhere(
       (p) => p.name == e.profileName,
@@ -235,6 +248,10 @@ class _CalcScreenState extends State<CalcScreen> {
   }
 
   void _calculate() {
+    // Очищаем поле результата предыдущего расчёта чтобы калькулятор
+    // всегда имел одно неизвестное поле для вычисления
+    _clearPrevResultField();
+
     final inputs = Map<String, double?>.from(_values);
     inputs[kQuantity] = _qty.toDouble();
 
@@ -530,10 +547,14 @@ class _CalcScreenState extends State<CalcScreen> {
         _QtyButton(
           icon: 'minus',
           onTap: () {
-            if (_qty > 1) setState(() { _qty--; _result = null; _error = null; _unchanged = false; });
+            if (_qty > 1) {
+              _clearPrevResultField();
+              setState(() { _qty--; _result = null; _error = null; _unchanged = false; });
+            }
           },
           onLongPress: () {
             HapticFeedback.heavyImpact();
+            _clearPrevResultField();
             setState(() { _qty = 1; _result = null; _error = null; _unchanged = false; });
           },
         ),
@@ -556,7 +577,10 @@ class _CalcScreenState extends State<CalcScreen> {
         const SizedBox(width: 4),
         _QtyButton(
           icon: 'plus',
-          onTap: () => setState(() { _qty++; _result = null; _error = null; _unchanged = false; }),
+          onTap: () {
+            _clearPrevResultField();
+            setState(() { _qty++; _result = null; _error = null; _unchanged = false; });
+          },
           onLongPress: null,
         ),
       ]),
