@@ -125,7 +125,15 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
                       : cs.onSurface.withOpacity(0.22);
                 }
 
-                return Container(
+                return GestureDetector(
+                  onTap: sel ? null : () {
+                    // Прокручиваем прямо к этому элементу
+                    HapticFeedback.selectionClick();
+                    _ctrl.animateToItem(i,
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOut);
+                  },
+                  child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   decoration: rowBg != null
                       ? BoxDecoration(
@@ -145,6 +153,7 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
                       ),
                     ),
                   ),
+                ),
                 );
               },
             ),
@@ -163,29 +172,6 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
                 begin: Alignment.bottomCenter, end: Alignment.topCenter,
                 colors: [bg, bg.withOpacity(0)],
               ))))),
-
-          // Тап по любому видимому элементу — прокрутка прямо к нему по Y-позиции
-          Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onTapUp: (details) {
-                // Центр барабана — середина виджета (2.5 * itemHeight от верха)
-                final centerY = widget.itemHeight * 2.5;
-                final tapY = details.localPosition.dy;
-                // Смещение в единицах itemHeight от центра
-                final offset = ((tapY - centerY) / widget.itemHeight).round();
-                // Не реагируем на тап прямо по центральному элементу
-                if (offset == 0) return;
-                final target = (_idx + offset).clamp(0, widget.items.length - 1);
-                if (target != _idx) {
-                  HapticFeedback.selectionClick();
-                  _ctrl.animateToItem(target,
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeOut);
-                }
-              },
-            ),
-          ),
 
           // Линии + стрелка Tabler
           Positioned(
@@ -308,6 +294,7 @@ Future<void> showTwoDrumDialog({
   required String selectedGrade,
   required ValueChanged<String> onGroupChanged,
   required ValueChanged<String> onGradeChanged,
+  Future<List<String>> Function(String group)? gradeLoader,
 }) {
   HapticFeedback.mediumImpact();
   String curGroup = selectedGroup;
@@ -339,8 +326,11 @@ Future<void> showTwoDrumDialog({
                   items: groups, selectedItem: curGroup,
                   labelBuilder: (s) => s,
                   groupKey: (s) => s,
-                  onChanged: (g) {
-                    final newGrades = gradesForGroup(g).map((m) => m.grade).toList();
+                  onChanged: (g) async {
+                    // Загружаем марки с учётом порядка из настроек
+                    final newGrades = gradeLoader != null
+                        ? await gradeLoader(g)
+                        : gradesForGroup(g).map((m) => m.grade).toList();
                     ss(() {
                       curGroup = g;
                       curGrades = newGrades;
@@ -396,8 +386,10 @@ Future<void> showTwoDrumSheet({
   required String selectedGrade,
   required ValueChanged<String> onGroupChanged,
   required ValueChanged<String> onGradeChanged,
+  Future<List<String>> Function(String group)? gradeLoader,
 }) => showTwoDrumDialog(
   context: context, groups: groups, selectedGroup: selectedGroup,
   grades: grades, selectedGrade: selectedGrade,
   onGroupChanged: onGroupChanged, onGradeChanged: onGradeChanged,
+  gradeLoader: gradeLoader,
 );

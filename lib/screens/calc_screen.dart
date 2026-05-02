@@ -7,12 +7,14 @@ import '../data/profiles_data.dart';
 import '../data/materials_data.dart';
 import '../data/gost_sizes.dart';
 import '../data/gost_reference.dart';
+import '../data/order_prefs.dart';
 import '../models/models.dart';
 import '../logic/calculator.dart';
 import '../widgets/drum_picker.dart';
 import '../widgets/tabler_icon.dart';
 import 'history_screen.dart';
 import 'gost_reference_screen.dart';
+import 'settings_screen.dart';
 
 // ── Допуски по весу ГОСТ ─────────────────────────────────────────────────────
 const Map<String, double> _gostWeightTolerance = {
@@ -68,7 +70,8 @@ class CalcScreen extends StatefulWidget {
 class _CalcScreenState extends State<CalcScreen> {
   late MetalProfile _profile;
   late MetalMaterial _material;
-  final List<String> _groups = metalGroups;
+  List<String> _groups = metalGroups;         // порядок из настроек
+  List<MetalProfile> _orderedProfiles = [];    // порядок из настроек
 
   final Map<String, double?> _values = {};
   final Map<String, TextEditingController> _ctrl = {};
@@ -84,10 +87,30 @@ class _CalcScreenState extends State<CalcScreen> {
   @override
   void initState() {
     super.initState();
-    _profile  = profiles.first;
+    _orderedProfiles = List.from(profiles);
+    _profile  = _orderedProfiles.first;
     _material = gradesForGroup(_groups.first).first;
     _rebuild();
     themeNotifier.addListener(() => setState(() {}));
+    _loadOrder();
+  }
+
+  Future<void> _loadOrder() async {
+    final profileOrder = await loadProfileOrder();
+    final groupOrder   = await loadGroupOrder();
+    final ordered = profileOrder
+        .map((name) => profiles.firstWhere((p) => p.name == name,
+            orElse: () => profiles.first))
+        .where((p) => profiles.contains(p))
+        .toList();
+    setState(() {
+      _orderedProfiles = ordered.isEmpty ? List.from(profiles) : ordered;
+      _groups = groupOrder;
+      // Обновляем текущий профиль если он сдвинулся
+      if (!_orderedProfiles.contains(_profile)) {
+        _profile = _orderedProfiles.first;
+      }
+    });
   }
 
   void _rebuild() {
@@ -126,7 +149,6 @@ class _CalcScreenState extends State<CalcScreen> {
       setState(() {
         _values[key] = v;
         _result = null;
-        _prevResult = null;  // сбрасываем — изменились данные
         _error  = null;
         _unchanged = false;
       });
@@ -138,19 +160,20 @@ class _CalcScreenState extends State<CalcScreen> {
 
   void _selectProfile() => showSingleDrumDialog<MetalProfile>(
     context: context, title: 'Сортамент',
-    items: profiles, selected: _profile, label: (p) => p.name,
+    items: _orderedProfiles, selected: _profile, label: (p) => p.name,
     onChanged: (p) => setState(() { _profile = p; _rebuild(); }),
   );
 
-  void _selectMaterial() {
-    final grades = gradesForGroup(_material.group).map((m) => m.grade).toList();
+  void _selectMaterial() async {
+    final grades = await loadGradeOrder(_material.group);
+    if (!mounted) return;
     showTwoDrumDialog(
       context: context,
       groups: _groups,
       selectedGroup: _material.group,
       grades: grades,
       selectedGrade: _material.grade,
-      onGroupChanged: (g) {
+      onGroupChanged: (g) async {
         final list = gradesForGroup(g);
         if (list.isNotEmpty) setState(() => _material = list.first);
       },
@@ -158,6 +181,7 @@ class _CalcScreenState extends State<CalcScreen> {
         final found = materials.where((m) => m.grade == grade).toList();
         if (found.isNotEmpty) setState(() => _material = found.first);
       },
+      gradeLoader: loadGradeOrder,
     );
   }
 
@@ -246,6 +270,13 @@ class _CalcScreenState extends State<CalcScreen> {
         title: const Text('Калькулятор металла',
             style: TextStyle(fontFamily: 'Manrope', fontWeight: FontWeight.w700)),
         actions: [
+          IconButton(
+            icon: TIconAppBar('settings', size: 22),
+            tooltip: 'Настройки',
+            onPressed: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => SettingsScreen(onOrderChanged: _loadOrder),
+            )),
+          ),
           if (_history.isNotEmpty)
             IconButton(
               icon: Badge(
@@ -254,7 +285,10 @@ class _CalcScreenState extends State<CalcScreen> {
               ),
               tooltip: 'История',
               onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => HistoryScreen(history: _history))),
+                  MaterialPageRoute(builder: (_) => HistoryScreen(
+                    history: _history,
+                    onRestore: _restoreFromHistory,
+                  ))),
             ),
         ],
       ),
@@ -463,11 +497,11 @@ class _CalcScreenState extends State<CalcScreen> {
         _QtyButton(
           icon: 'minus',
           onTap: () {
-            if (_qty > 1) setState(() { _qty--; _result = null; _prevResult = null; _error = null; _unchanged = false; });
+            if (_qty > 1) setState(() { _qty--; _result = null; _error = null; _unchanged = false; });
           },
           onLongPress: () {
             HapticFeedback.heavyImpact();
-            setState(() { _qty = 1; _result = null; _prevResult = null; _error = null; _unchanged = false; });
+            setState(() { _qty = 1; _result = null; _error = null; _unchanged = false; });
           },
         ),
         const SizedBox(width: 4),
@@ -489,7 +523,7 @@ class _CalcScreenState extends State<CalcScreen> {
         const SizedBox(width: 4),
         _QtyButton(
           icon: 'plus',
-          onTap: () => setState(() { _qty++; _result = null; _prevResult = null; _error = null; _unchanged = false; }),
+          onTap: () => setState(() { _qty++; _result = null; _error = null; _unchanged = false; }),
           onLongPress: null,
         ),
       ]),
