@@ -91,15 +91,15 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
       height: widget.itemHeight * 5,
       child: Stack(
         children: [
-          // 1. Барабан — свободное вращение с инерцией
+          // 1. Барабан — свободное вращение с инерцией (ничем не блокируется)
           ListWheelScrollView.useDelegate(
             controller: _ctrl,
             itemExtent: widget.itemHeight,
             perspective: 0.003,
             diameterRatio: 2.5,
-            physics: const FixedExtentScrollPhysics(),
+            physics: const FixedExtentScrollPhysics(), // Чистая инерция + привязка к элементам
             onSelectedItemChanged: (i) {
-              HapticFeedback.selectionClick();
+              HapticFeedback.selectionClick(); // Вибрация на КАЖДЫЙ шаг
               setState(() => _idx = i);
               widget.onChanged(widget.items[i]);
             },
@@ -148,15 +148,18 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
           ),
 
           // 2. Слой обработки тапов по Y-координате
-          // HitTestBehavior.translucent — drag проходит насквозь к ListWheelScrollView
+          // Ключевое: onTapUp (не onTapDown!) — срабатывает ТОЛЬКО если не было свайпа
+          // Это гарантирует, что вертикальный драг уходит в ListWheelScrollView
           Positioned.fill(
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
-              onTapDown: (details) {
+              onTapUp: (details) {
                 final dy = details.localPosition.dy;
                 final centerY = widget.itemHeight * 2.5;
+                // Смещение от центра в единицах itemHeight
                 final offsetItems = ((dy - centerY) / widget.itemHeight).round();
                 final targetIndex = (_idx + offsetItems).clamp(0, widget.items.length - 1);
+
                 if (targetIndex != _idx && _ctrl.hasClients) {
                   HapticFeedback.selectionClick();
                   _ctrl.animateToItem(
@@ -166,10 +169,11 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
                   );
                 }
               },
+              // Не добавляем onVerticalDrag* — они автоматически проходят сквозь
             ),
           ),
 
-          // 3. Градиенты сверху/снизу
+          // 3. Градиенты затемнения сверху/снизу
           Positioned(top: 0, left: 0, right: 0, height: widget.itemHeight * 2,
               child: IgnorePointer(child: Container(decoration: BoxDecoration(
                 gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
@@ -181,7 +185,7 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
                     colors: [bg, bg.withOpacity(0)],
               ))))),
 
-          // 4. Линии + стрелка по центру
+          // 4. Линии + стрелка Tabler по центру
           Positioned(
             top: widget.itemHeight * 2,
             left: 0, right: 0,

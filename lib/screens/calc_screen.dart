@@ -175,11 +175,17 @@ class _CalcScreenState extends State<CalcScreen> {
       selectedGrade: _material.grade,
       onGroupChanged: (g) async {
         final list = gradesForGroup(g);
-        if (list.isNotEmpty) setState(() => _material = list.first);
+        if (list.isNotEmpty) {
+          setState(() => _material = list.first);
+          _autoCorrectProfile();
+        }
       },
       onGradeChanged: (grade) {
         final found = materials.where((m) => m.grade == grade).toList();
-        if (found.isNotEmpty) setState(() => _material = found.first);
+        if (found.isNotEmpty) {
+          setState(() => _material = found.first);
+          _autoCorrectProfile();
+        }
       },
       gradeLoader: loadGradeOrder,
     );
@@ -302,6 +308,47 @@ class _CalcScreenState extends State<CalcScreen> {
   }
 
   double? get _currentTolerance => _gostWeightTolerance[_profile.name];
+
+  // ── Автокоррекция сортамента при смене металла ────────────────────────────
+  // Круг + цветной металл → Пруток
+  // Пруток + Сталь/Нержавейка → Круг
+  static const _coloredMetals = {
+    'Латунь', 'Медь', 'Бронза', 'Алюминий', 'Титан',
+    'Никель', 'Нихром', 'Вольфрам', 'Молибден', 'Цинк', 'Цирконий',
+  };
+  static const _ferrous = {'Сталь', 'Нержавейка'};
+
+  void _autoCorrectProfile() {
+    final group = _material.group;
+    final profileName = _profile.name;
+
+    String? targetName;
+    if (profileName == 'Круг' && _coloredMetals.contains(group)) {
+      targetName = 'Пруток';
+    } else if (profileName == 'Пруток' && _ferrous.contains(group)) {
+      targetName = 'Круг';
+    }
+    if (targetName == null) return;
+
+    final target = _orderedProfiles.firstWhere(
+      (p) => p.name == targetName,
+      orElse: () => profiles.firstWhere((p) => p.name == targetName!),
+    );
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(
+          'Сортамент изменён: $profileName → $targetName',
+          style: const TextStyle(fontFamily: 'Manrope'),
+        ),
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+      ));
+
+    _profile = target;
+    _rebuild();
+  }
 
   @override
   void dispose() {

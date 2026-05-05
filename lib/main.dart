@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/calc_screen.dart';
 
-void main() => runApp(const MetalCalcApp());
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  runApp(const MetalCalcApp());
+}
 
 class MetalCalcApp extends StatelessWidget {
   const MetalCalcApp({super.key});
@@ -70,7 +75,6 @@ class MetalCalcApp extends StatelessWidget {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),
-            // Явно задаём белый текст в полях ввода для тёмной темы
             inputDecorationTheme: InputDecorationTheme(
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
               contentPadding:
