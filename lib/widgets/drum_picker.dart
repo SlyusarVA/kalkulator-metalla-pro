@@ -91,15 +91,14 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
       height: widget.itemHeight * 5,
       child: Stack(
         children: [
-          // 1. Барабан — свободное вращение с инерцией (ничем не блокируется)
           ListWheelScrollView.useDelegate(
             controller: _ctrl,
             itemExtent: widget.itemHeight,
             perspective: 0.003,
             diameterRatio: 2.5,
-            physics: const FixedExtentScrollPhysics(), // Чистая инерция + привязка к элементам
+            physics: const FixedExtentScrollPhysics(),
             onSelectedItemChanged: (i) {
-              HapticFeedback.selectionClick(); // Вибрация на КАЖДЫЙ шаг
+              HapticFeedback.selectionClick();
               setState(() => _idx = i);
               widget.onChanged(widget.items[i]);
             },
@@ -147,19 +146,14 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
             ),
           ),
 
-          // 2. Слой обработки тапов по Y-координате
-          // Ключевое: onTapUp (не onTapDown!) — срабатывает ТОЛЬКО если не было свайпа
-          // Это гарантирует, что вертикальный драг уходит в ListWheelScrollView
           Positioned.fill(
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
               onTapUp: (details) {
                 final dy = details.localPosition.dy;
                 final centerY = widget.itemHeight * 2.5;
-                // Смещение от центра в единицах itemHeight
                 final offsetItems = ((dy - centerY) / widget.itemHeight).round();
                 final targetIndex = (_idx + offsetItems).clamp(0, widget.items.length - 1);
-
                 if (targetIndex != _idx && _ctrl.hasClients) {
                   HapticFeedback.selectionClick();
                   _ctrl.animateToItem(
@@ -169,11 +163,9 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
                   );
                 }
               },
-              // Не добавляем onVerticalDrag* — они автоматически проходят сквозь
             ),
           ),
 
-          // 3. Градиенты затемнения сверху/снизу
           Positioned(top: 0, left: 0, right: 0, height: widget.itemHeight * 2,
               child: IgnorePointer(child: Container(decoration: BoxDecoration(
                 gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
@@ -185,7 +177,6 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
                     colors: [bg, bg.withOpacity(0)],
               ))))),
 
-          // 4. Линии + стрелка Tabler по центру
           Positioned(
             top: widget.itemHeight * 2,
             left: 0, right: 0,
@@ -238,6 +229,195 @@ class _ConfirmButton extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Bottom sheet: все марки с поиском ────────────────────────────────────────
+Future<String?> _showAllGradesSheet(
+  BuildContext context,
+  String group,
+  String currentGrade,
+) async {
+  final cs = Theme.of(context).colorScheme;
+  final mc = _metalColors[group];
+  final allGrades = allGradesForGroup(group);
+  final searchCtrl = TextEditingController();
+  String query = '';
+
+  return showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: cs.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, ss) {
+        final filtered = query.isEmpty
+            ? allGrades
+            : allGrades
+                .where((m) => m.grade.toLowerCase().contains(query.toLowerCase()))
+                .toList();
+
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.75,
+          minChildSize: 0.4,
+          maxChildSize: 0.95,
+          builder: (_, scrollCtrl) => Column(
+            children: [
+              // Ручка
+              Container(
+                margin: const EdgeInsets.only(top: 10, bottom: 6),
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                  color: cs.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Заголовок с цветом металла
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                child: Row(children: [
+                  if (mc != null)
+                    Container(
+                      width: 12, height: 12,
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        color: mc.bg,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  Text(
+                    'Все марки · $group',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Manrope',
+                      color: cs.onSurface,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${allGrades.length} шт',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: cs.onSurface.withOpacity(0.45),
+                      fontFamily: 'Manrope',
+                    ),
+                  ),
+                ]),
+              ),
+              // Поиск
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                child: TextField(
+                  controller: searchCtrl,
+                  autofocus: false,
+                  style: TextStyle(fontFamily: 'Manrope', color: cs.onSurface),
+                  decoration: InputDecoration(
+                    hintText: 'Поиск марки...',
+                    hintStyle: TextStyle(fontFamily: 'Manrope',
+                        color: cs.onSurface.withOpacity(0.4)),
+                    prefixIcon: Icon(Icons.search, size: 20, color: cs.primary),
+                    suffixIcon: query.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(Icons.clear, size: 18,
+                                color: cs.onSurface.withOpacity(0.5)),
+                            onPressed: () {
+                              searchCtrl.clear();
+                              ss(() => query = '');
+                            },
+                          )
+                        : null,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(
+                          color: cs.outline.withOpacity(0.3)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(
+                          color: cs.outline.withOpacity(0.3)),
+                    ),
+                  ),
+                  onChanged: (v) => ss(() => query = v),
+                ),
+              ),
+              const Divider(height: 1),
+              // Список
+              Expanded(
+                child: filtered.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Ничего не найдено',
+                          style: TextStyle(
+                            color: cs.onSurface.withOpacity(0.4),
+                            fontFamily: 'Manrope',
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        controller: scrollCtrl,
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        itemCount: filtered.length,
+                        itemBuilder: (_, i) {
+                          final m = filtered[i];
+                          final isSelected = m.grade == currentGrade;
+                          return InkWell(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              Navigator.pop(ctx, m.grade);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                              color: isSelected
+                                  ? cs.primary.withOpacity(0.08)
+                                  : null,
+                              child: Row(children: [
+                                Expanded(
+                                  child: Text(
+                                    m.grade,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontFamily: 'Manrope',
+                                      fontWeight: isSelected
+                                          ? FontWeight.w700
+                                          : FontWeight.w400,
+                                      color: isSelected
+                                          ? cs.primary
+                                          : cs.onSurface,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  m.gost,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontFamily: 'Manrope',
+                                    color: cs.onSurface.withOpacity(0.4),
+                                  ),
+                                ),
+                                if (isSelected) ...[
+                                  const SizedBox(width: 8),
+                                  Icon(Icons.check_rounded,
+                                      size: 18, color: cs.primary),
+                                ],
+                              ]),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
 }
 
 // ── Диалог: одиночный барабан ─────────────────────────────────────────────────
@@ -305,11 +485,29 @@ Future<void> showTwoDrumDialog({
   String curGroup = selectedGroup;
   String curGrade = selectedGrade;
   List<String> curGrades = List.from(grades);
+
   return showDialog(
     context: context,
     barrierColor: Colors.black54,
     builder: (_) => StatefulBuilder(builder: (ctx, ss) {
       final cs = Theme.of(ctx).colorScheme;
+
+      Future<void> openAllGrades() async {
+        final picked = await _showAllGradesSheet(ctx, curGroup, curGrade);
+        if (picked != null && picked != curGrade) {
+          // Проверяем — есть ли выбранная марка в текущем барабане
+          // Если нет — добавляем её временно чтобы барабан мог на неё встать
+          final List<String> updatedGrades = curGrades.contains(picked)
+              ? curGrades
+              : [...curGrades, picked];
+          ss(() {
+            curGrade = picked;
+            curGrades = updatedGrades;
+          });
+          onGradeChanged(picked);
+        }
+      }
+
       return Center(
         child: Material(
           borderRadius: BorderRadius.circular(20),
@@ -319,8 +517,10 @@ Future<void> showTwoDrumDialog({
             width: MediaQuery.of(ctx).size.width * 0.92,
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               const SizedBox(height: 16),
-              Text('Металл и марка', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600,
-                  fontFamily: 'Manrope', color: cs.onSurface)),
+              Text('Металл и марка', style: TextStyle(
+                fontSize: 16, fontWeight: FontWeight.w600,
+                fontFamily: 'Manrope', color: cs.onSurface,
+              )),
               const SizedBox(height: 8),
               const Divider(height: 1),
               Row(children: [
@@ -331,7 +531,7 @@ Future<void> showTwoDrumDialog({
                   onChanged: (g) async {
                     final newGrades = gradeLoader != null
                         ? await gradeLoader(g)
-                        : gradesForGroup(g).map((m) => m.grade).toList();
+                        : basicGradesForGroup(g).map((m) => m.grade).toList();
                     ss(() {
                       curGroup = g;
                       curGrades = newGrades;
@@ -343,7 +543,7 @@ Future<void> showTwoDrumDialog({
                 )),
                 Container(width: 1, height: 240, color: cs.outlineVariant),
                 Expanded(flex: 6, child: DrumPicker<String>(
-                  key: ValueKey(curGroup),
+                  key: ValueKey('$curGroup-$curGrade'),
                   items: curGrades,
                   selectedItem: curGrades.contains(curGrade) ? curGrade
                       : (curGrades.isNotEmpty ? curGrades.first : null),
@@ -352,9 +552,34 @@ Future<void> showTwoDrumDialog({
                 )),
               ]),
               const Divider(height: 1),
+              // Кнопка "Все марки" + кнопка "Выбрать"
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                child: Row(children: [
+                  // Кнопка все марки
+                  GestureDetector(
+                    onTap: openAllGrades,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 11),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                            color: cs.primary.withOpacity(0.4)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        TIcon('list-search', size: 18, color: cs.primary),
+                        const SizedBox(width: 6),
+                        Text('Все марки', style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: cs.primary,
+                          fontFamily: 'Manrope',
+                        )),
+                      ]),
+                    ),
+                  ),
+                  const Spacer(),
                   _ConfirmButton(onPressed: () => Navigator.pop(ctx)),
                 ]),
               ),

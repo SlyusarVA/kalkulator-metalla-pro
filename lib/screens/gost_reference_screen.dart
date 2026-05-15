@@ -56,8 +56,7 @@ class _GostReferenceScreenState extends State<GostReferenceScreen> {
 
     final TextStyle body = TextStyle(
         fontSize: 14, height: 1.6, fontFamily: 'Manrope', color: cs.onSurface);
-    final TextStyle bold =
-        body.copyWith(fontWeight: FontWeight.w700);
+    final TextStyle bold = body.copyWith(fontWeight: FontWeight.w700);
     final TextStyle boldItalic = body.copyWith(
         fontWeight: FontWeight.w700,
         fontStyle: FontStyle.italic,
@@ -79,12 +78,14 @@ class _GostReferenceScreenState extends State<GostReferenceScreen> {
             ? TextField(
                 controller: _searchCtrl,
                 autofocus: true,
-                style: const TextStyle(color: Colors.white, fontFamily: 'Manrope'),
+                style:
+                    const TextStyle(color: Colors.white, fontFamily: 'Manrope'),
                 cursorColor: Colors.white,
                 decoration: InputDecoration(
                   hintText: 'Поиск в документе...',
                   hintStyle: TextStyle(
-                      color: Colors.white.withOpacity(0.6), fontFamily: 'Manrope'),
+                      color: Colors.white.withOpacity(0.6),
+                      fontFamily: 'Manrope'),
                   border: InputBorder.none,
                   isDense: true,
                 ),
@@ -145,7 +146,8 @@ class _GostReferenceScreenState extends State<GostReferenceScreen> {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('• ', style: body.copyWith(color: cs.primary)),
+                              Text('• ',
+                                  style: body.copyWith(color: cs.primary)),
                               Expanded(child: _highlighted(p, body)),
                             ],
                           ),
@@ -171,7 +173,8 @@ class _GostReferenceScreenState extends State<GostReferenceScreen> {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('• ', style: bold.copyWith(color: cs.primary)),
+                              Text('• ',
+                                  style: bold.copyWith(color: cs.primary)),
                               Expanded(child: _highlighted(t, bold)),
                             ],
                           ),
@@ -184,16 +187,14 @@ class _GostReferenceScreenState extends State<GostReferenceScreen> {
 
           // Критически важное — жирный + курсив + красный
           if (ref.critical.any(_matches)) ...[
-            Text('Важно знать',
-                style: label.copyWith(color: cs.error)),
+            Text('Важно знать', style: label.copyWith(color: cs.error)),
             const SizedBox(height: 6),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: cs.errorContainer.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(10),
-                border:
-                    Border.all(color: cs.error.withOpacity(0.3)),
+                border: Border.all(color: cs.error.withOpacity(0.3)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,8 +221,22 @@ class _GostReferenceScreenState extends State<GostReferenceScreen> {
             Text('Маркировка', style: label),
             const SizedBox(height: 6),
             _section(child: _highlighted(ref.marking, body), cs: cs),
-            const SizedBox(height: 24),
+            const SizedBox(height: 14),
           ],
+
+          // Расшифровка марки — раскрывающийся блок
+          if (ref.decoding.isNotEmpty) ...[
+            _DecodingTile(
+              ref: ref,
+              label: label,
+              body: body,
+              cs: cs,
+              highlighted: _highlighted,
+              matches: _matches,
+            ),
+            const SizedBox(height: 24),
+          ] else
+            const SizedBox(height: 10),
 
           // Кнопка полного текста
           FilledButton.icon(
@@ -258,4 +273,212 @@ class _GostReferenceScreenState extends State<GostReferenceScreen> {
         ),
         child: child,
       );
+}
+
+// ─── Раскрывающийся блок расшифровки марки ───────────────────────────────────
+
+class _DecodingTile extends StatefulWidget {
+  final GostReference ref;
+  final TextStyle label;
+  final TextStyle body;
+  final ColorScheme cs;
+  final Widget Function(String, TextStyle) highlighted;
+  final bool Function(String) matches;
+
+  const _DecodingTile({
+    required this.ref,
+    required this.label,
+    required this.body,
+    required this.cs,
+    required this.highlighted,
+    required this.matches,
+  });
+
+  @override
+  State<_DecodingTile> createState() => _DecodingTileState();
+}
+
+class _DecodingTileState extends State<_DecodingTile>
+    with SingleTickerProviderStateMixin {
+  bool _expanded = false;
+  late final AnimationController _ctrl;
+  late final Animation<double> _iconTurn;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+    _iconTurn = Tween<double>(begin: 0, end: 0.5).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    setState(() => _expanded = !_expanded);
+    _expanded ? _ctrl.forward() : _ctrl.reverse();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ref = widget.ref;
+    final cs = widget.cs;
+    final body = widget.body;
+    final label = widget.label;
+
+    final visibleItems = ref.decoding
+        .where((d) => widget.matches(d.symbol) || widget.matches(d.meaning))
+        .toList();
+
+    if (visibleItems.isEmpty) return const SizedBox.shrink();
+
+    // Заголовок шапки: пример обозначения или fallback
+    final headerTitle = ref.decodingExample != null
+        ? ref.decodingExample!
+        : 'Расшифровка марки';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Расшифровка марки', style: label),
+        const SizedBox(height: 6),
+        GestureDetector(
+          onTap: _toggle,
+          child: Container(
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: cs.primary.withOpacity(0.25)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Шапка — всегда видна, показывает пример марки
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 12),
+                  child: Row(
+                    children: [
+                      // Иконка-подсказка
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: cs.primary.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(Icons.abc_rounded,
+                            size: 20, color: cs.primary),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Как читать марку',
+                              style: body.copyWith(
+                                fontSize: 11,
+                                color: cs.onSurface.withOpacity(0.55),
+                                height: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              headerTitle,
+                              style: body.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: cs.primary,
+                                fontSize: 14,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      RotationTransition(
+                        turns: _iconTurn,
+                        child: Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: cs.primary,
+                          size: 24,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Раскрывающаяся таблица
+                AnimatedCrossFade(
+                  firstChild: const SizedBox.shrink(),
+                  secondChild: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Divider(
+                            color: cs.primary.withOpacity(0.2), height: 1),
+                        const SizedBox(height: 10),
+                        ...visibleItems.map((d) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Символ / обозначение — бейджик
+                                  Container(
+                                    constraints:
+                                        const BoxConstraints(minWidth: 72),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: cs.primary.withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: widget.highlighted(
+                                      d.symbol,
+                                      body.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        color: cs.primary,
+                                        fontSize: 13,
+                                        height: 1.3,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  // Значение
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: widget.highlighted(
+                                        d.meaning,
+                                        body.copyWith(fontSize: 13),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )),
+                      ],
+                    ),
+                  ),
+                  crossFadeState: _expanded
+                      ? CrossFadeState.showSecond
+                      : CrossFadeState.showFirst,
+                  duration: const Duration(milliseconds: 250),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

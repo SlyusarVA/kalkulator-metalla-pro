@@ -7,6 +7,10 @@ class GostReference {
   final List<String> critical;
   final String marking;
   final String fullTextUrl;
+  /// Пример обозначения для памятки расшифровки
+  final String? decodingExample;
+  /// Список пар «символ → значение» для памятки расшифровки
+  final List<DecodingItem> decoding;
 
   const GostReference({
     required this.code,
@@ -17,7 +21,15 @@ class GostReference {
     this.critical = const [],
     required this.marking,
     required this.fullTextUrl,
+    this.decodingExample,
+    this.decoding = const [],
   });
+}
+
+class DecodingItem {
+  final String symbol;
+  final String meaning;
+  const DecodingItem(this.symbol, this.meaning);
 }
 
 const List<GostReference> gostReferences = [
@@ -486,6 +498,15 @@ const List<GostReference> gostReferences = [
     marking: 'Маркировка цветными полосами на торце: Ст3кп — красная+синяя, '
         'Ст3пс — красная+жёлтая, Ст3сп — красная+зелёная.',
     fullTextUrl: 'https://docs.cntd.ru/document/1200041571',
+    decodingExample: 'Ст3сп / Ст0 / Ст5пс2',
+    decoding: [
+      DecodingItem('Ст', 'Сталь углеродистая обыкновенного качества'),
+      DecodingItem('0–6', 'Номер марки (условный) — чем выше, тем больше углерода и прочность'),
+      DecodingItem('кп', 'Кипящая — нераскислённая, дешевле, хуже при низких t°'),
+      DecodingItem('пс', 'Полуспокойная — частично раскислена'),
+      DecodingItem('сп', 'Спокойная — полностью раскислена, лучшее качество'),
+      DecodingItem('1, 2 (после кп/пс/сп)', 'Категория по нормируемым характеристикам'),
+    ],
   ),
 
   GostReference(
@@ -509,6 +530,15 @@ const List<GostReference> gostReferences = [
     ],
     marking: 'Маркировка краской на торце прутка или бирке.',
     fullTextUrl: 'https://docs.cntd.ru/document/1200107986',
+    decodingExample: '20 / 45 / 08пс / 10кп',
+    decoding: [
+      DecodingItem('08, 10, 20, 45…', 'Среднее содержание углерода в сотых долях % (сталь 20 = 0,20% C)'),
+      DecodingItem('кп', 'Кипящая — только для марок 08 и 10'),
+      DecodingItem('пс', 'Полуспокойная — только до марки 10 включительно'),
+      DecodingItem('(без индекса)', 'Спокойная — для марок 15 и выше по умолчанию'),
+      DecodingItem('А (в конце)', 'Повышенное качество по неметаллическим включениям (20А)'),
+      DecodingItem('Ш (в конце)', 'Электрошлаковый переплав — высшее качество (20Ш)'),
+    ],
   ),
 
   GostReference(
@@ -531,6 +561,21 @@ const List<GostReference> gostReferences = [
     ],
     marking: 'Маркировка краской: хромистые — зелёная полоса.',
     fullTextUrl: 'https://docs.cntd.ru/document/1200136413',
+    decodingExample: '40Х / 18ХГТ / 30ХГСА / 12ХН3А',
+    decoding: [
+      DecodingItem('40, 30, 18…', 'Среднее содержание углерода в сотых долях % (40Х = 0,40% C)'),
+      DecodingItem('Х', 'Хром (Cr) — если без цифры, то ~1%'),
+      DecodingItem('Г', 'Марганец (Mn)'),
+      DecodingItem('С', 'Кремний (Si)'),
+      DecodingItem('Н', 'Никель (Ni)'),
+      DecodingItem('М', 'Молибден (Mo)'),
+      DecodingItem('Т', 'Титан (Ti)'),
+      DecodingItem('В', 'Вольфрам (W)'),
+      DecodingItem('Ф', 'Ванадий (V)'),
+      DecodingItem('Цифра после буквы', 'Примерное содержание легирующего элемента в % (Х2 = ~2% Cr)'),
+      DecodingItem('А (в конце)', 'Высококачественная — пониженное содержание S и P'),
+      DecodingItem('Ш (в конце)', 'Электрошлаковый переплав'),
+    ],
   ),
 
   GostReference(
@@ -553,6 +598,15 @@ const List<GostReference> gostReferences = [
     ],
     marking: 'Маркировка на бирке. 65Г — синяя полоса.',
     fullTextUrl: 'https://docs.cntd.ru/document/1200136210',
+    decodingExample: '65Г / 60С2А / 50ХФА',
+    decoding: [
+      DecodingItem('65, 60, 70…', 'Среднее содержание углерода в сотых долях % (65 = 0,65% C)'),
+      DecodingItem('Г', 'Марганец (Mn) — повышает прокаливаемость'),
+      DecodingItem('С2', 'Кремний ~2% — основной легирующий элемент пружинных сталей'),
+      DecodingItem('Х', 'Хром ~1%'),
+      DecodingItem('Ф', 'Ванадий — измельчает зерно'),
+      DecodingItem('А (в конце)', 'Высококачественная — пониженные S и P'),
+    ],
   ),
 
   GostReference(
@@ -576,6 +630,17 @@ const List<GostReference> gostReferences = [
     ],
     marking: 'Маркировка в сертификате с указанием категории хладостойкости.',
     fullTextUrl: 'https://docs.cntd.ru/document/1200113926',
+    decodingExample: '09Г2С / 10ХСНД / 17Г1С',
+    decoding: [
+      DecodingItem('09', 'Среднее содержание углерода в сотых долях % (09 = 0,09% C)'),
+      DecodingItem('Г2', 'Марганец ~2% (Г — Mn, цифра — содержание в %)'),
+      DecodingItem('С (без цифры)', 'Кремний ~1%'),
+      DecodingItem('Х', 'Хром ~1%'),
+      DecodingItem('Н', 'Никель ~1%'),
+      DecodingItem('Д', 'Медь (Cu) ~1%'),
+      DecodingItem('17Г1С', 'Пример: 0,17% C, 1% Mn, 1% Si — трубная сталь для газопроводов'),
+      DecodingItem('Кат. 1–15 (в заказе)', 'Категория по хладостойкости: чем выше номер — ниже рабочая t°'),
+    ],
   ),
 
   GostReference(
@@ -598,6 +663,17 @@ const List<GostReference> gostReferences = [
     ],
     marking: 'Маркировка: 9ХС — коричневая+синяя полосы.',
     fullTextUrl: 'https://docs.cntd.ru/document/1200003408',
+    decodingExample: '9ХС / ХВГ / Х12МФ',
+    decoding: [
+      DecodingItem('9 (в начале)', 'Содержание углерода ~0,9% (если цифра меньше 1 — в десятых долях %)'),
+      DecodingItem('Х', 'Хром'),
+      DecodingItem('В', 'Вольфрам — повышает теплостойкость'),
+      DecodingItem('Г', 'Марганец — снижает деформацию при закалке'),
+      DecodingItem('С', 'Кремний — повышает упругость'),
+      DecodingItem('М', 'Молибден'),
+      DecodingItem('Ф', 'Ванадий'),
+      DecodingItem('ХВГ (без цифры в начале)', 'Содержание C ~1% — для инструментальных сталей опускается'),
+    ],
   ),
 
   GostReference(
@@ -620,6 +696,12 @@ const List<GostReference> gostReferences = [
     ],
     marking: 'У8 — жёлтая полоса, У10 — жёлтая+синяя.',
     fullTextUrl: 'https://docs.cntd.ru/document/1200003374',
+    decodingExample: 'У8 / У10А / У12',
+    decoding: [
+      DecodingItem('У', 'Углеродистая инструментальная сталь'),
+      DecodingItem('8, 10, 12…', 'Содержание углерода в десятых долях % (У8 = 0,8% C, У12 = 1,2% C)'),
+      DecodingItem('А (в конце)', 'Повышенное качество — меньше серы, фосфора, неметаллических включений'),
+    ],
   ),
 
   GostReference(
@@ -642,6 +724,14 @@ const List<GostReference> gostReferences = [
     ],
     marking: 'Р6М5 — красная+белая, Р18 — красная.',
     fullTextUrl: 'https://docs.cntd.ru/document/1200003602',
+    decodingExample: 'Р6М5 / Р18 / Р6М5К5',
+    decoding: [
+      DecodingItem('Р', 'Быстрорежущая (Rapid) — особый класс инструментальных сталей'),
+      DecodingItem('6 (после Р)', 'Содержание вольфрама ~6% (Р18 = 18% W)'),
+      DecodingItem('М5', 'Молибден ~5%'),
+      DecodingItem('К5', 'Кобальт ~5% — повышает теплостойкость до 650°C'),
+      DecodingItem('Ф2', 'Ванадий ~2% — повышает износостойкость'),
+    ],
   ),
 
   GostReference(
@@ -663,6 +753,14 @@ const List<GostReference> gostReferences = [
     ],
     marking: 'Маркировка на бирке.',
     fullTextUrl: 'https://docs.cntd.ru/document/1200003329',
+    decodingExample: 'А12 / А35 / А40Г',
+    decoding: [
+      DecodingItem('А (в начале)', 'Автоматная сталь — повышенное содержание серы для ломкой стружки'),
+      DecodingItem('12, 20, 35…', 'Среднее содержание углерода в сотых долях %'),
+      DecodingItem('Г (в конце)', 'Марганец — дополнительно улучшает обрабатываемость'),
+      DecodingItem('С', 'Кремний'),
+      DecodingItem('е', 'Добавка селена (Ае12) — улучшенная обрабатываемость'),
+    ],
   ),
 
   GostReference(
@@ -684,6 +782,16 @@ const List<GostReference> gostReferences = [
     ],
     marking: 'Аустенитные — немагнитные (проверка магнитом).',
     fullTextUrl: 'https://docs.cntd.ru/document/1200118190',
+    decodingExample: '08Х18Н10Т / 12Х17 / 40Х13 / 03Х17Н14М3',
+    decoding: [
+      DecodingItem('08, 12, 40, 03…', 'Содержание углерода в сотых долях % (03 = 0,03% — особо низкое для сварки)'),
+      DecodingItem('Х18', 'Хром ~18% — обеспечивает коррозионную стойкость'),
+      DecodingItem('Н10', 'Никель ~10% — формирует аустенитную структуру'),
+      DecodingItem('Т', 'Титан — стабилизирует сталь от межкристаллитной коррозии при сварке'),
+      DecodingItem('М3', 'Молибден ~3% — стойкость к хлоридам и кислотам'),
+      DecodingItem('Л (в конце)', 'Литейная марка (обозначается в конце)'),
+      DecodingItem('(без Н)', 'Ферритная или мартенситная сталь — магнитная (12Х17, 40Х13)'),
+    ],
   ),
 
   GostReference(
@@ -706,6 +814,20 @@ const List<GostReference> gostReferences = [
     ],
     marking: 'Дюралюминий Д16 — красная полоса.',
     fullTextUrl: 'https://docs.cntd.ru/document/1200170341',
+    decodingExample: 'АМг5 / Д16Т / АД31Т / В95пч',
+    decoding: [
+      DecodingItem('А (в начале)', 'Алюминий — основа сплава'),
+      DecodingItem('Д', 'Дюралюминий — система Al-Cu-Mg (высокопрочная)'),
+      DecodingItem('АМг', 'Al-Mg — алюминиево-магниевый сплав (свариваемый)'),
+      DecodingItem('АМц', 'Al-Mn — алюминиево-марганцевый (хорошая коррозионная стойкость)'),
+      DecodingItem('АД', 'Технический алюминий или сплав для профилей'),
+      DecodingItem('В', 'Высокопрочный сплав (В95 = Al-Zn-Mg-Cu)'),
+      DecodingItem('5, 16, 31…', 'Номер сплава или % легирующего элемента (АМг5 = 5% Mg)'),
+      DecodingItem('М (состояние)', 'Мягкое (отожжённое)'),
+      DecodingItem('Н (состояние)', 'Нагартованное'),
+      DecodingItem('Т (состояние)', 'Закалка + искусственное старение'),
+      DecodingItem('пч / оч', 'Повышенная / особая чистота'),
+    ],
   ),
 
   GostReference(
@@ -726,6 +848,13 @@ const List<GostReference> gostReferences = [
     ],
     marking: 'Маркировка на чушках выплавкой или штамповкой.',
     fullTextUrl: 'https://docs.cntd.ru/document/1200170075',
+    decodingExample: 'А5 / А7 / А99 / А999',
+    decoding: [
+      DecodingItem('А', 'Алюминий первичный'),
+      DecodingItem('5, 7, 85, 95, 99…', 'Чистота: цифра указывает на степень чистоты (А5 = 99,5% Al, А99 = 99,99% Al)'),
+      DecodingItem('А999', 'Особо чистый: Al ≥ 99,999%'),
+      DecodingItem('А0', 'Технический алюминий — минимальная чистота'),
+    ],
   ),
 
   GostReference(
@@ -747,6 +876,17 @@ const List<GostReference> gostReferences = [
     ],
     marking: 'Маркировка на бирке с составом плавки.',
     fullTextUrl: 'https://docs.cntd.ru/document/1200038150',
+    decodingExample: 'Л63 / ЛС59-1 / ЛО62-1 / ЛАЖМц66-6-3-2',
+    decoding: [
+      DecodingItem('Л', 'Латунь (медно-цинковый сплав)'),
+      DecodingItem('63, 68, 80…', 'Содержание меди в % (Л63 = 63% Cu, остальное цинк)'),
+      DecodingItem('С', 'Свинец (улучшает обрабатываемость резанием — ЛС59-1 = 1% Pb)'),
+      DecodingItem('О', 'Олово (повышает коррозионную стойкость в морской воде)'),
+      DecodingItem('А', 'Алюминий'),
+      DecodingItem('Ж', 'Железо'),
+      DecodingItem('Мц', 'Марганец'),
+      DecodingItem('Цифры через дефис', 'Содержание каждого легирующего элемента в % в порядке букв'),
+    ],
   ),
 
   GostReference(
@@ -769,6 +909,13 @@ const List<GostReference> gostReferences = [
     ],
     marking: 'Бескислородная медь — дополнительная маркировка «б».',
     fullTextUrl: 'https://docs.cntd.ru/document/1200113576',
+    decodingExample: 'М1 / М1б / М00б / М3',
+    decoding: [
+      DecodingItem('М', 'Медь'),
+      DecodingItem('00, 0, 1, 2, 3, 4', 'Степень чистоты — чем меньше цифра, тем чище (М00 = 99,99% Cu)'),
+      DecodingItem('б', 'Бескислородная — содержание O₂ < 0,001%, для электроники и вакуумной техники'),
+      DecodingItem('р', 'Раскисленная фосфором — для пайки и сварки'),
+    ],
   ),
 
   GostReference(
@@ -789,6 +936,17 @@ const List<GostReference> gostReferences = [
     ],
     marking: 'Маркировка на бирке с полным обозначением марки.',
     fullTextUrl: 'https://docs.cntd.ru/document/1200004941',
+    decodingExample: 'БрАМц9-2 / БрАЖ9-4 / БрБ2 / БрКМц3-1',
+    decoding: [
+      DecodingItem('Бр', 'Бронза (сплав меди не с цинком)'),
+      DecodingItem('А', 'Алюминий (Al)'),
+      DecodingItem('Мц', 'Марганец (Mn)'),
+      DecodingItem('Ж', 'Железо (Fe)'),
+      DecodingItem('Б', 'Бериллий — БрБ2 = 2% Be (пружинная бронза)'),
+      DecodingItem('К', 'Кремний (Si)'),
+      DecodingItem('Н', 'Никель'),
+      DecodingItem('Цифры через дефис', 'Содержание каждого элемента в % в порядке букв (9-2 = 9% Al, 2% Mn)'),
+    ],
   ),
 
   GostReference(
@@ -810,6 +968,15 @@ const List<GostReference> gostReferences = [
     ],
     marking: 'ВТ1-0 — синяя, ВТ6 — красная+синяя.',
     fullTextUrl: 'https://docs.cntd.ru/document/1200004970',
+    decodingExample: 'ВТ1-0 / ВТ6 / ОТ4 / ПТ-7М',
+    decoding: [
+      DecodingItem('ВТ', 'ВИЛС-Титан — основная серия конструкционных сплавов (разработка ВИЛС)'),
+      DecodingItem('1-0', 'Порядковый номер сплава (ВТ1-0 = технически чистый титан)'),
+      DecodingItem('6', 'Номер сплава — ВТ6 = Ti-6Al-4V (наиболее применяемый)'),
+      DecodingItem('ОТ4', 'Орловский Титан — сплав с алюминием и марганцем, хорошо сваривается'),
+      DecodingItem('ПТ', 'Псевдо-α сплав или другая серия'),
+      DecodingItem('М (в конце)', 'Модификация — улучшенная свариваемость или состав'),
+    ],
   ),
 
   GostReference(
@@ -872,6 +1039,15 @@ const List<GostReference> gostReferences = [
     ],
     marking: 'НП1 — белая полоса.',
     fullTextUrl: 'https://docs.cntd.ru/document/1200039952',
+    decodingExample: 'НП1 / НП2 / МНЖМц28-2,5-1,5',
+    decoding: [
+      DecodingItem('НП', 'Никель Первичный (чистый)'),
+      DecodingItem('1, 2, 3, 4', 'Степень чистоты — НП1 = 99,99%, НП4 = 99,0% Ni'),
+      DecodingItem('МН', 'Медно-никелевый сплав (МН = Cu-Ni)'),
+      DecodingItem('МНЖ', 'Медно-никелево-железный'),
+      DecodingItem('МНЖМц', 'Медно-никелево-железно-марганцевый (мельхиор / нейзильбер)'),
+      DecodingItem('Цифры через дефис', 'Содержание каждого легирующего элемента в %'),
+    ],
   ),
 
   GostReference(
@@ -893,6 +1069,13 @@ const List<GostReference> gostReferences = [
     ],
     marking: 'Маркировка на бирке с удельным сопротивлением партии.',
     fullTextUrl: 'https://docs.cntd.ru/document/1200003344',
+    decodingExample: 'Х20Н80 / Х15Н60 / ХН70Ю',
+    decoding: [
+      DecodingItem('Х20', 'Хром ~20%'),
+      DecodingItem('Н80', 'Никель ~80% — основа сплава'),
+      DecodingItem('Ю', 'Алюминий (Al) — от немецкого Aluminium'),
+      DecodingItem('ХН', 'Хромоникелевый сплав (нихром)'),
+    ],
   ),
 
   GostReference(
@@ -915,6 +1098,11 @@ const List<GostReference> gostReferences = [
     ],
     marking: 'Маркировка штамповкой на чушках.',
     fullTextUrl: 'https://docs.cntd.ru/document/1200003272',
+    decodingExample: 'Ц0 / Ц1 / Ц2 / Ц4',
+    decoding: [
+      DecodingItem('Ц', 'Цинк'),
+      DecodingItem('0, 1, 2, 3, 4', 'Степень чистоты — Ц0 = 99,99% Zn, Ц4 = 98,5% Zn'),
+    ],
   ),
 
   GostReference(

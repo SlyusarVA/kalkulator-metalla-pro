@@ -15,6 +15,7 @@ import '../widgets/tabler_icon.dart';
 import 'history_screen.dart';
 import 'gost_reference_screen.dart';
 import 'settings_screen.dart';
+import '../services/history_service.dart';
 
 // ── Допуски по весу ГОСТ ─────────────────────────────────────────────────────
 const Map<String, double> _gostWeightTolerance = {
@@ -89,10 +90,16 @@ class _CalcScreenState extends State<CalcScreen> {
     super.initState();
     _orderedProfiles = List.from(profiles);
     _profile  = _orderedProfiles.first;
-    _material = gradesForGroup(_groups.first).first;
+    _material = basicGradesForGroup(_groups.first).first;
     _rebuild();
     themeNotifier.addListener(() => setState(() {}));
     _loadOrder();
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    final saved = await loadHistory();
+    if (saved.isNotEmpty) setState(() => _history.addAll(saved));
   }
 
   Future<void> _loadOrder() async {
@@ -165,7 +172,10 @@ class _CalcScreenState extends State<CalcScreen> {
   );
 
   void _selectMaterial() async {
-    final grades = await loadGradeOrder(_material.group);
+    final _allOrder = await loadGradeOrder(_material.group);
+    final _basic = basicGradesForGroup(_material.group).map((m) => m.grade).toSet();
+    final _filtered = _allOrder.where((g) => _basic.contains(g)).toList();
+    final grades = _filtered.isNotEmpty ? _filtered : basicGradesForGroup(_material.group).map((m) => m.grade).toList();
     if (!mounted) return;
     showTwoDrumDialog(
       context: context,
@@ -174,7 +184,7 @@ class _CalcScreenState extends State<CalcScreen> {
       grades: grades,
       selectedGrade: _material.grade,
       onGroupChanged: (g) async {
-        final list = gradesForGroup(g);
+        final list = basicGradesForGroup(g);
         if (list.isNotEmpty) {
           setState(() => _material = list.first);
           _autoCorrectProfile();
@@ -187,7 +197,12 @@ class _CalcScreenState extends State<CalcScreen> {
           _autoCorrectProfile();
         }
       },
-      gradeLoader: loadGradeOrder,
+      gradeLoader: (g) async {
+        final all = await loadGradeOrder(g);
+        final basic = basicGradesForGroup(g).map((m) => m.grade).toSet();
+        final filtered = all.where((grade) => basic.contains(grade)).toList();
+        return filtered.isNotEmpty ? filtered : basicGradesForGroup(g).map((m) => m.grade).toList();
+      },
     );
   }
 
@@ -297,6 +312,7 @@ class _CalcScreenState extends State<CalcScreen> {
             result: res,
           ));
           if (_history.length > 50) _history.removeLast();
+          saveHistory(_history);
         }
       } else {
         _result = null;
@@ -389,8 +405,30 @@ class _CalcScreenState extends State<CalcScreen> {
             ),
         ],
       ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            FilledButton(
+              onPressed: _calculate,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(double.infinity, 52),
+                shape: const StadiumBorder(),
+              ),
+              child: const Text('Рассчитать',
+                  style: TextStyle(fontSize: 16, fontFamily: 'Manrope',
+                      fontWeight: FontWeight.w700, letterSpacing: 0.3)),
+            ),
+            TextButton(
+              onPressed: () => setState(_rebuild),
+              child: const Text('Очистить поля',
+                  style: TextStyle(fontFamily: 'Manrope')),
+            ),
+          ]),
+        ),
+      ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
         children: [
           // ── Кнопки выбора сортамента и металла ──────────────────────────────
           Row(children: [
@@ -545,21 +583,6 @@ class _CalcScreenState extends State<CalcScreen> {
             ),
 
           const SizedBox(height: 8),
-          FilledButton(
-            onPressed: _calculate,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(double.infinity, 52),
-              shape: const StadiumBorder(),
-            ),
-            child: const Text('Рассчитать',
-                style: TextStyle(fontSize: 16, fontFamily: 'Manrope',
-                    fontWeight: FontWeight.w700, letterSpacing: 0.3)),
-          ),
-          TextButton(
-            onPressed: () => setState(_rebuild),
-            child: const Text('Очистить поля',
-                style: TextStyle(fontFamily: 'Manrope')),
-          ),
           const SizedBox(height: 24),
         ],
       ),
@@ -651,6 +674,9 @@ class _CalcScreenState extends State<CalcScreen> {
             controller: _ctrl[key],
             readOnly: readOnly,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: readOnly ? null : [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
+            ],
             style: isRes
                 ? TextStyle(color: cs.primary, fontWeight: FontWeight.w600,
                     fontFamily: 'Manrope')
@@ -734,6 +760,9 @@ class _CalcScreenState extends State<CalcScreen> {
         child: TextField(
           controller: _ctrl[p.key],
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
+          ],
           style: TextStyle(fontFamily: 'Manrope', color: cs.onSurface),
           decoration: InputDecoration(
             labelText: p.label, suffixText: p.unit,
@@ -845,7 +874,7 @@ class _GostChipState extends State<_GostChip>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 5),
+      duration: const Duration(seconds: 3),
     );
     _ctrl.addStatusListener((status) {
       if (status == AnimationStatus.completed) _onComplete();
