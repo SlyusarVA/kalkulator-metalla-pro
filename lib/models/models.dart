@@ -5,16 +5,16 @@ class ProfileParam {
   final String label;
   final String unit;
   final double defaultValue;
-  /// Если true — барабан с ГОСТ-значениями; если false — только клавиатура
-  final bool hasDrumValues;
-  final List<double> drumValues; // заполняется только если hasDrumValues==true
+  final List<double> drumValues;
+
+  /// true, если для поля есть ГОСТ-значения и его можно выбирать барабаном.
+  bool get hasDrumValues => drumValues.isNotEmpty;
 
   const ProfileParam({
     required this.key,
     required this.label,
     required this.unit,
     required this.defaultValue,
-    this.hasDrumValues = false,
     this.drumValues = const [],
   });
 }
@@ -26,6 +26,7 @@ class MetalProfile {
   final String gost;
   final String iconAsset;
   final List<ProfileParam> params;
+
   /// Возвращает площадь сечения в мм².
   /// Для листа/плиты возвращает объём в мм³ (isVolume==true).
   final double Function(Map<String, double> v) sectionArea;
@@ -65,6 +66,7 @@ class CalcResult {
   final CalcTarget target;
   final double value;
   final String unit;
+
   // extra info
   final double? linearMass; // кг/м — для линейных профилей
 
