@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../logic/calculator.dart';
 import '../models/models.dart';
 
 const String _kHistoryKey = 'calc_history_v1';
@@ -106,7 +105,13 @@ CalcResult? _calcResultFromJson(Map<String, dynamic> json) {
     return null;
   }
 
-  final target = CalcTarget.values.where((e) => e.name == targetRaw).firstOrNull;
+  CalcTarget? target;
+  for (final candidate in CalcTarget.values) {
+    if (candidate.name == targetRaw) {
+      target = candidate;
+      break;
+    }
+  }
   if (target == null) return null;
 
   return CalcResult(
