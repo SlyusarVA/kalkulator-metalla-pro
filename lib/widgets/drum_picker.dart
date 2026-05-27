@@ -1,24 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import '../data/materials_data.dart';
 import '../widgets/tabler_icon.dart';
 
 // ── Цвета металлов ───────────────────────────────────────────────────────────
 const Map<String, _MetalColor> _metalColors = {
-  'Сталь':      _MetalColor(bg: Color(0xFF212121), text: Color(0xFFFFFFFF)),
+  'Сталь': _MetalColor(bg: Color(0xFF212121), text: Color(0xFFFFFFFF)),
   'Нержавейка': _MetalColor(bg: Color(0xFFB0BEC5), text: Color(0xFF1A1A1A)),
-  'Алюминий':   _MetalColor(bg: Color(0xFFEEEEEE), text: Color(0xFF1A1A1A)),
-  'Латунь':     _MetalColor(bg: Color(0xFFB8960C), text: Color(0xFF1A1A1A)),
-  'Медь':       _MetalColor(bg: Color(0xFFB05A2A), text: Color(0xFFFFFFFF)),
-  'Бронза':     _MetalColor(bg: Color(0xFF8D6228), text: Color(0xFFFFFFFF)),
-  'Титан':      _MetalColor(bg: Color(0xFF546E7A), text: Color(0xFFFFFFFF)),
-  'Никель':     _MetalColor(bg: Color(0xFF9E9E9E), text: Color(0xFF1A1A1A)),
-  'Нихром':     _MetalColor(bg: Color(0xFF4E4E4E), text: Color(0xFFFFFFFF)),
-  'Вольфрам':   _MetalColor(bg: Color(0xFF37474F), text: Color(0xFFFFFFFF)),
-  'Молибден':   _MetalColor(bg: Color(0xFF455A64), text: Color(0xFFFFFFFF)),
-  'Цинк':       _MetalColor(bg: Color(0xFF78909C), text: Color(0xFF1A1A1A)),
-  'Цирконий':   _MetalColor(bg: Color(0xFF607D8B), text: Color(0xFFFFFFFF)),
+  'Алюминий': _MetalColor(bg: Color(0xFFEEEEEE), text: Color(0xFF1A1A1A)),
+  'Латунь': _MetalColor(bg: Color(0xFFB8960C), text: Color(0xFF1A1A1A)),
+  'Медь': _MetalColor(bg: Color(0xFFB05A2A), text: Color(0xFFFFFFFF)),
+  'Бронза': _MetalColor(bg: Color(0xFF8D6228), text: Color(0xFFFFFFFF)),
+  'Титан': _MetalColor(bg: Color(0xFF546E7A), text: Color(0xFFFFFFFF)),
+  'Никель': _MetalColor(bg: Color(0xFF9E9E9E), text: Color(0xFF1A1A1A)),
+  'Нихром': _MetalColor(bg: Color(0xFF4E4E4E), text: Color(0xFFFFFFFF)),
+  'Вольфрам': _MetalColor(bg: Color(0xFF37474F), text: Color(0xFFFFFFFF)),
+  'Молибден': _MetalColor(bg: Color(0xFF455A64), text: Color(0xFFFFFFFF)),
+  'Цинк': _MetalColor(bg: Color(0xFF78909C), text: Color(0xFF1A1A1A)),
+  'Цирконий': _MetalColor(bg: Color(0xFF607D8B), text: Color(0xFFFFFFFF)),
 };
+
 class _MetalColor {
   final Color bg;
   final Color text;
@@ -33,6 +35,7 @@ class DrumPicker<T> extends StatefulWidget {
   final ValueChanged<T> onChanged;
   final double itemHeight;
   final String? Function(T)? groupKey;
+
   const DrumPicker({
     super.key,
     required this.items,
@@ -42,6 +45,7 @@ class DrumPicker<T> extends StatefulWidget {
     this.itemHeight = 48,
     this.groupKey,
   });
+
   @override
   State<DrumPicker<T>> createState() => _DrumPickerState<T>();
 }
@@ -58,7 +62,7 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
   }
 
   int _findIndex(T? item) {
-    if (item == null) return 0;
+    if (item == null || widget.items.isEmpty) return 0;
     final i = widget.items.indexOf(item);
     return i < 0 ? 0 : i;
   }
@@ -68,9 +72,15 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
     super.didUpdateWidget(old);
     if (widget.items != old.items || widget.selectedItem != old.selectedItem) {
       final target = _findIndex(widget.selectedItem);
+      if (target == _idx) return;
       _idx = target;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_ctrl.hasClients) _ctrl.jumpToItem(_idx);
+        if (!mounted || !_ctrl.hasClients) return;
+        _ctrl.animateToItem(
+          _idx,
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutCubic,
+        );
       });
     }
   }
@@ -87,6 +97,22 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = cs.surface;
 
+    if (widget.items.isEmpty) {
+      return SizedBox(
+        height: widget.itemHeight * 5,
+        child: Center(
+          child: Text(
+            'Нет данных',
+            style: TextStyle(
+              fontSize: 14,
+              color: cs.onSurface.withOpacity(0.45),
+              fontFamily: 'Manrope',
+            ),
+          ),
+        ),
+      );
+    }
+
     return SizedBox(
       height: widget.itemHeight * 5,
       child: Stack(
@@ -95,9 +121,12 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
             controller: _ctrl,
             itemExtent: widget.itemHeight,
             perspective: 0.003,
-            diameterRatio: 2.5,
+            diameterRatio: 2.8,
+            squeeze: 0.96,
             physics: const FixedExtentScrollPhysics(),
+            overAndUnderCenterOpacity: 0.72,
             onSelectedItemChanged: (i) {
+              if (i < 0 || i >= widget.items.length || i == _idx) return;
               HapticFeedback.selectionClick();
               setState(() => _idx = i);
               widget.onChanged(widget.items[i]);
@@ -109,20 +138,25 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
                 final label = widget.labelBuilder(widget.items[i]);
                 final grpKey = widget.groupKey?.call(widget.items[i]);
                 final mc = grpKey != null ? _metalColors[grpKey] : null;
-                Color textColor;
-                Color? rowBg;
+
+                final Color textColor;
+                final Color? rowBg;
                 if (sel && mc != null) {
                   rowBg = mc.bg;
                   textColor = mc.text;
                 } else if (sel) {
+                  rowBg = null;
                   textColor = cs.primary;
                 } else {
+                  rowBg = null;
                   textColor = isDark
-                      ? cs.onSurface.withOpacity(0.28)
-                      : cs.onSurface.withOpacity(0.22);
+                      ? cs.onSurface.withOpacity(0.42)
+                      : cs.onSurface.withOpacity(0.34);
                 }
+
                 return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
                   decoration: rowBg != null
                       ? BoxDecoration(
                           color: rowBg,
@@ -130,14 +164,22 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
                         )
                       : null,
                   child: Center(
-                    child: Text(
-                      label,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: sel ? 17 : 14,
-                        fontWeight: sel ? FontWeight.w700 : FontWeight.w400,
-                        color: textColor,
-                        fontFamily: 'Manrope',
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 220),
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: sel ? 17 : 14,
+                            fontWeight: sel ? FontWeight.w700 : FontWeight.w400,
+                            color: textColor,
+                            fontFamily: 'Manrope',
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -145,56 +187,65 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
               },
             ),
           ),
-
-          Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onTapUp: (details) {
-                final dy = details.localPosition.dy;
-                final centerY = widget.itemHeight * 2.5;
-                final offsetItems = ((dy - centerY) / widget.itemHeight).round();
-                final targetIndex = (_idx + offsetItems).clamp(0, widget.items.length - 1);
-                if (targetIndex != _idx && _ctrl.hasClients) {
-                  HapticFeedback.selectionClick();
-                  _ctrl.animateToItem(
-                    targetIndex,
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeOut,
-                  );
-                }
-              },
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: widget.itemHeight * 2,
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [bg, bg.withOpacity(0)],
+                  ),
+                ),
+              ),
             ),
           ),
-
-          Positioned(top: 0, left: 0, right: 0, height: widget.itemHeight * 2,
-              child: IgnorePointer(child: Container(decoration: BoxDecoration(
-                gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: widget.itemHeight * 2,
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
                     colors: [bg, bg.withOpacity(0)],
-              ))))),
-          Positioned(bottom: 0, left: 0, right: 0, height: widget.itemHeight * 2,
-              child: IgnorePointer(child: Container(decoration: BoxDecoration(
-                gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter,
-                    colors: [bg, bg.withOpacity(0)],
-              ))))),
-
+                  ),
+                ),
+              ),
+            ),
+          ),
           Positioned(
             top: widget.itemHeight * 2,
-            left: 0, right: 0,
+            left: 0,
+            right: 0,
             height: widget.itemHeight,
-            child: IgnorePointer(child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(width: 4),
-                TIcon('arrow-badge-right', size: 22, color: cs.primary),
-                Expanded(child: Container(decoration: BoxDecoration(
-                  border: Border(
-                    top: BorderSide(color: cs.primary.withOpacity(0.4), width: 1),
-                    bottom: BorderSide(color: cs.primary.withOpacity(0.4), width: 1),
+            child: IgnorePointer(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(width: 4),
+                  TIcon('arrow-badge-right', size: 22, color: cs.primary),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: cs.primary.withOpacity(0.4), width: 1),
+                          bottom: BorderSide(color: cs.primary.withOpacity(0.4), width: 1),
+                        ),
+                      ),
+                    ),
                   ),
-                ))),
-                const SizedBox(width: 24),
-              ],
-            )),
+                  const SizedBox(width: 24),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -206,6 +257,7 @@ class _DrumPickerState<T> extends State<DrumPicker<T>> {
 class _ConfirmButton extends StatelessWidget {
   final VoidCallback onPressed;
   const _ConfirmButton({required this.onPressed});
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -214,17 +266,11 @@ class _ConfirmButton extends StatelessWidget {
       onTap: onPressed,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 11),
-        decoration: BoxDecoration(
-          color: cs.primary,
-          borderRadius: BorderRadius.circular(12),
-        ),
+        decoration: BoxDecoration(color: cs.primary, borderRadius: BorderRadius.circular(12)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           TIcon(isDark ? 'circle-check-filled' : 'circle-check', size: 20, color: cs.onPrimary),
           const SizedBox(width: 8),
-          Text('Выбрать', style: TextStyle(
-            fontSize: 15, fontWeight: FontWeight.w600,
-            color: cs.onPrimary, fontFamily: 'Manrope',
-          )),
+          Text('Выбрать', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: cs.onPrimary, fontFamily: 'Manrope')),
         ]),
       ),
     );
@@ -232,11 +278,7 @@ class _ConfirmButton extends StatelessWidget {
 }
 
 // ── Bottom sheet: все марки с поиском ────────────────────────────────────────
-Future<String?> _showAllGradesSheet(
-  BuildContext context,
-  String group,
-  String currentGrade,
-) async {
+Future<String?> _showAllGradesSheet(BuildContext context, String group, String currentGrade) async {
   final cs = Theme.of(context).colorScheme;
   final mc = _metalColors[group];
   final allGrades = allGradesForGroup(group);
@@ -247,16 +289,12 @@ Future<String?> _showAllGradesSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: cs.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, ss) {
         final filtered = query.isEmpty
             ? allGrades
-            : allGrades
-                .where((m) => m.grade.toLowerCase().contains(query.toLowerCase()))
-                .toList();
+            : allGrades.where((m) => m.grade.toLowerCase().contains(query.toLowerCase())).toList();
 
         return DraggableScrollableSheet(
           expand: false,
@@ -265,49 +303,27 @@ Future<String?> _showAllGradesSheet(
           maxChildSize: 0.95,
           builder: (_, scrollCtrl) => Column(
             children: [
-              // Ручка
               Container(
                 margin: const EdgeInsets.only(top: 10, bottom: 6),
-                width: 36, height: 4,
-                decoration: BoxDecoration(
-                  color: cs.outlineVariant,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(color: cs.outlineVariant, borderRadius: BorderRadius.circular(2)),
               ),
-              // Заголовок с цветом металла
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 child: Row(children: [
                   if (mc != null)
                     Container(
-                      width: 12, height: 12,
+                      width: 12,
+                      height: 12,
                       margin: const EdgeInsets.only(right: 8),
-                      decoration: BoxDecoration(
-                        color: mc.bg,
-                        shape: BoxShape.circle,
-                      ),
+                      decoration: BoxDecoration(color: mc.bg, shape: BoxShape.circle),
                     ),
-                  Text(
-                    'Все марки · $group',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Manrope',
-                      color: cs.onSurface,
-                    ),
-                  ),
+                  Text('Все марки · $group', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'Manrope', color: cs.onSurface)),
                   const Spacer(),
-                  Text(
-                    '${allGrades.length} шт',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: cs.onSurface.withOpacity(0.45),
-                      fontFamily: 'Manrope',
-                    ),
-                  ),
+                  Text('${allGrades.length} шт', style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.45), fontFamily: 'Manrope')),
                 ]),
               ),
-              // Поиск
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
                 child: TextField(
@@ -316,13 +332,11 @@ Future<String?> _showAllGradesSheet(
                   style: TextStyle(fontFamily: 'Manrope', color: cs.onSurface),
                   decoration: InputDecoration(
                     hintText: 'Поиск марки...',
-                    hintStyle: TextStyle(fontFamily: 'Manrope',
-                        color: cs.onSurface.withOpacity(0.4)),
+                    hintStyle: TextStyle(fontFamily: 'Manrope', color: cs.onSurface.withOpacity(0.4)),
                     prefixIcon: Icon(Icons.search, size: 20, color: cs.primary),
                     suffixIcon: query.isNotEmpty
                         ? IconButton(
-                            icon: Icon(Icons.clear, size: 18,
-                                color: cs.onSurface.withOpacity(0.5)),
+                            icon: Icon(Icons.clear, size: 18, color: cs.onSurface.withOpacity(0.5)),
                             onPressed: () {
                               searchCtrl.clear();
                               ss(() => query = '');
@@ -330,35 +344,17 @@ Future<String?> _showAllGradesSheet(
                           )
                         : null,
                     isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(
-                          color: cs.outline.withOpacity(0.3)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(
-                          color: cs.outline.withOpacity(0.3)),
-                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: cs.outline.withOpacity(0.3))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: cs.outline.withOpacity(0.3))),
                   ),
                   onChanged: (v) => ss(() => query = v),
                 ),
               ),
               const Divider(height: 1),
-              // Список
               Expanded(
                 child: filtered.isEmpty
-                    ? Center(
-                        child: Text(
-                          'Ничего не найдено',
-                          style: TextStyle(
-                            color: cs.onSurface.withOpacity(0.4),
-                            fontFamily: 'Manrope',
-                          ),
-                        ),
-                      )
+                    ? Center(child: Text('Ничего не найдено', style: TextStyle(color: cs.onSurface.withOpacity(0.4), fontFamily: 'Manrope')))
                     : ListView.builder(
                         controller: scrollCtrl,
                         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -372,11 +368,8 @@ Future<String?> _showAllGradesSheet(
                               Navigator.pop(ctx, m.grade);
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              color: isSelected
-                                  ? cs.primary.withOpacity(0.08)
-                                  : null,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              color: isSelected ? cs.primary.withOpacity(0.08) : null,
                               child: Row(children: [
                                 Expanded(
                                   child: Text(
@@ -384,27 +377,15 @@ Future<String?> _showAllGradesSheet(
                                     style: TextStyle(
                                       fontSize: 15,
                                       fontFamily: 'Manrope',
-                                      fontWeight: isSelected
-                                          ? FontWeight.w700
-                                          : FontWeight.w400,
-                                      color: isSelected
-                                          ? cs.primary
-                                          : cs.onSurface,
+                                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                                      color: isSelected ? cs.primary : cs.onSurface,
                                     ),
                                   ),
                                 ),
-                                Text(
-                                  m.gost,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontFamily: 'Manrope',
-                                    color: cs.onSurface.withOpacity(0.4),
-                                  ),
-                                ),
+                                Text(m.gost, style: TextStyle(fontSize: 11, fontFamily: 'Manrope', color: cs.onSurface.withOpacity(0.4))),
                                 if (isSelected) ...[
                                   const SizedBox(width: 8),
-                                  Icon(Icons.check_rounded,
-                                      size: 18, color: cs.primary),
+                                  Icon(Icons.check_rounded, size: 18, color: cs.primary),
                                 ],
                               ]),
                             ),
@@ -431,7 +412,7 @@ Future<void> showSingleDrumDialog<T>({
   String? Function(T)? groupKey,
 }) {
   HapticFeedback.mediumImpact();
-  T cur = selected ?? items.first;
+  T? cur = selected ?? (items.isNotEmpty ? items.first : null);
   return showDialog(
     context: context,
     barrierColor: Colors.black54,
@@ -446,14 +427,18 @@ Future<void> showSingleDrumDialog<T>({
             width: MediaQuery.of(ctx).size.width * 0.88,
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               const SizedBox(height: 16),
-              Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600,
-                  fontFamily: 'Manrope', color: cs.onSurface)),
+              Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'Manrope', color: cs.onSurface)),
               const SizedBox(height: 8),
               const Divider(height: 1),
               DrumPicker<T>(
-                items: items, selectedItem: cur,
-                labelBuilder: label, groupKey: groupKey,
-                onChanged: (v) { ss(() => cur = v); onChanged(v); },
+                items: items,
+                selectedItem: cur,
+                labelBuilder: label,
+                groupKey: groupKey,
+                onChanged: (v) {
+                  ss(() => cur = v);
+                  onChanged(v);
+                },
               ),
               const Divider(height: 1),
               Padding(
@@ -495,11 +480,7 @@ Future<void> showTwoDrumDialog({
       Future<void> openAllGrades() async {
         final picked = await _showAllGradesSheet(ctx, curGroup, curGrade);
         if (picked != null && picked != curGrade) {
-          // Проверяем — есть ли выбранная марка в текущем барабане
-          // Если нет — добавляем её временно чтобы барабан мог на неё встать
-          final List<String> updatedGrades = curGrades.contains(picked)
-              ? curGrades
-              : [...curGrades, picked];
+          final List<String> updatedGrades = curGrades.contains(picked) ? curGrades : [...curGrades, picked];
           ss(() {
             curGrade = picked;
             curGrades = updatedGrades;
@@ -517,65 +498,57 @@ Future<void> showTwoDrumDialog({
             width: MediaQuery.of(ctx).size.width * 0.92,
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               const SizedBox(height: 16),
-              Text('Металл и марка', style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w600,
-                fontFamily: 'Manrope', color: cs.onSurface,
-              )),
+              Text('Металл и марка', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'Manrope', color: cs.onSurface)),
               const SizedBox(height: 8),
               const Divider(height: 1),
               Row(children: [
-                Expanded(flex: 5, child: DrumPicker<String>(
-                  items: groups, selectedItem: curGroup,
-                  labelBuilder: (s) => s,
-                  groupKey: (s) => s,
-                  onChanged: (g) async {
-                    final newGrades = gradeLoader != null
-                        ? await gradeLoader(g)
-                        : basicGradesForGroup(g).map((m) => m.grade).toList();
-                    ss(() {
-                      curGroup = g;
-                      curGrades = newGrades;
-                      curGrade = newGrades.isNotEmpty ? newGrades.first : '';
-                    });
-                    onGroupChanged(g);
-                    if (newGrades.isNotEmpty) onGradeChanged(newGrades.first);
-                  },
-                )),
+                Expanded(
+                  flex: 5,
+                  child: DrumPicker<String>(
+                    items: groups,
+                    selectedItem: curGroup,
+                    labelBuilder: (s) => s,
+                    groupKey: (s) => s,
+                    onChanged: (g) async {
+                      final newGrades = gradeLoader != null ? await gradeLoader(g) : basicGradesForGroup(g).map((m) => m.grade).toList();
+                      ss(() {
+                        curGroup = g;
+                        curGrades = newGrades;
+                        curGrade = newGrades.isNotEmpty ? newGrades.first : '';
+                      });
+                      onGroupChanged(g);
+                      if (newGrades.isNotEmpty) onGradeChanged(newGrades.first);
+                    },
+                  ),
+                ),
                 Container(width: 1, height: 240, color: cs.outlineVariant),
-                Expanded(flex: 6, child: DrumPicker<String>(
-                  key: ValueKey('$curGroup-$curGrade'),
-                  items: curGrades,
-                  selectedItem: curGrades.contains(curGrade) ? curGrade
-                      : (curGrades.isNotEmpty ? curGrades.first : null),
-                  labelBuilder: (s) => s,
-                  onChanged: (g) { ss(() => curGrade = g); onGradeChanged(g); },
-                )),
+                Expanded(
+                  flex: 6,
+                  child: DrumPicker<String>(
+                    key: ValueKey('$curGroup-$curGrade'),
+                    items: curGrades,
+                    selectedItem: curGrades.contains(curGrade) ? curGrade : (curGrades.isNotEmpty ? curGrades.first : null),
+                    labelBuilder: (s) => s,
+                    onChanged: (g) {
+                      ss(() => curGrade = g);
+                      onGradeChanged(g);
+                    },
+                  ),
+                ),
               ]),
               const Divider(height: 1),
-              // Кнопка "Все марки" + кнопка "Выбрать"
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(children: [
-                  // Кнопка все марки
                   GestureDetector(
                     onTap: openAllGrades,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 11),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                            color: cs.primary.withOpacity(0.4)),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                      decoration: BoxDecoration(border: Border.all(color: cs.primary.withOpacity(0.4)), borderRadius: BorderRadius.circular(12)),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
                         TIcon('list-search', size: 18, color: cs.primary),
                         const SizedBox(width: 6),
-                        Text('Все марки', style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: cs.primary,
-                          fontFamily: 'Manrope',
-                        )),
+                        Text('Все марки', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: cs.primary, fontFamily: 'Manrope')),
                       ]),
                     ),
                   ),
@@ -599,10 +572,8 @@ Future<void> showSingleDrumSheet<T>({
   required T? selected,
   required String Function(T) label,
   required ValueChanged<T> onChanged,
-}) => showSingleDrumDialog<T>(
-  context: context, title: title, items: items,
-  selected: selected, label: label, onChanged: onChanged,
-);
+}) =>
+    showSingleDrumDialog<T>(context: context, title: title, items: items, selected: selected, label: label, onChanged: onChanged);
 
 Future<void> showTwoDrumSheet({
   required BuildContext context,
@@ -613,9 +584,14 @@ Future<void> showTwoDrumSheet({
   required ValueChanged<String> onGroupChanged,
   required ValueChanged<String> onGradeChanged,
   Future<List<String>> Function(String group)? gradeLoader,
-}) => showTwoDrumDialog(
-  context: context, groups: groups, selectedGroup: selectedGroup,
-  grades: grades, selectedGrade: selectedGrade,
-  onGroupChanged: onGroupChanged, onGradeChanged: onGradeChanged,
-  gradeLoader: gradeLoader,
-);
+}) =>
+    showTwoDrumDialog(
+      context: context,
+      groups: groups,
+      selectedGroup: selectedGroup,
+      grades: grades,
+      selectedGrade: selectedGrade,
+      onGroupChanged: onGroupChanged,
+      onGradeChanged: onGradeChanged,
+      gradeLoader: gradeLoader,
+    );
