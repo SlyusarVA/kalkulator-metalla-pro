@@ -44,11 +44,34 @@ class _MeasurementReportScreenState extends State<MeasurementReportScreen> {
     };
   }
 
+  bool get _canTransferToCalculator {
+    if (_report.representativeLengthMm == null || _report.quantity < 1) {
+      return false;
+    }
+    return switch (_report.profileName) {
+      'Круг' || 'Пруток' => _report.diameterMm != null,
+      'Труба кр.' =>
+        _report.diameterMm != null && _report.wallThicknessMm != null,
+      _ => false,
+    };
+  }
+
   Future<void> _changeQuantity(int delta) async {
     final next = (_report.quantity + delta).clamp(1, 99999);
     if (next == _report.quantity) return;
     setState(() => _report = _report.copyWith(quantity: next));
     await upsertMeasurementReport(_report);
+  }
+
+  Future<void> _calculateWeight() async {
+    if (!_canTransferToCalculator) return;
+    await upsertMeasurementReport(_report);
+    if (!mounted) return;
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      '/calculator',
+      (route) => false,
+      arguments: _report,
+    );
   }
 
   @override
@@ -233,7 +256,7 @@ class _MeasurementReportScreenState extends State<MeasurementReportScreen> {
           ),
           const SizedBox(height: 12),
           FilledButton.icon(
-            onPressed: null,
+            onPressed: _canTransferToCalculator ? _calculateWeight : null,
             icon: TIcon('calculator', size: 20),
             label: const Text(
               'Рассчитать вес',
@@ -246,6 +269,18 @@ class _MeasurementReportScreenState extends State<MeasurementReportScreen> {
               minimumSize: const Size(double.infinity, 52),
             ),
           ),
+          if (!_canTransferToCalculator) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Для передачи в калькулятор нужны длина и размеры профиля.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                color: cs.onSurfaceVariant,
+                fontFamily: 'Manrope',
+              ),
+            ),
+          ],
           const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: () async {
@@ -259,16 +294,6 @@ class _MeasurementReportScreenState extends State<MeasurementReportScreen> {
             label: const Text('Сохранить отчёт'),
             style: OutlinedButton.styleFrom(
               minimumSize: const Size(double.infinity, 48),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Передача данных в калькулятор будет подключена после проверки точек интеграции расчётного экрана.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 11,
-              color: cs.onSurfaceVariant,
-              fontFamily: 'Manrope',
             ),
           ),
         ],
