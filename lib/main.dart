@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'features/vision/screens/measurement_history_screen.dart';
 import 'screens/calc_screen.dart';
 
 void main() {
@@ -87,6 +88,9 @@ class MetalCalcApp extends StatelessWidget {
             ),
           ),
 
+          routes: {
+            '/measurements': (_) => const MeasurementHistoryScreen(),
+          },
           home: const CalcScreen(),
         );
       },
