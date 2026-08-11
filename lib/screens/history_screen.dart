@@ -24,6 +24,13 @@ class HistoryScreen extends StatelessWidget {
         ),
         title: const Text('История расчётов',
             style: TextStyle(fontFamily: 'Manrope', fontWeight: FontWeight.w700)),
+        actions: [
+          IconButton(
+            icon: TIconAppBar('ruler-measure', size: 22),
+            tooltip: 'История замеров',
+            onPressed: () => Navigator.pushNamed(context, '/measurements'),
+          ),
+        ],
       ),
       body: history.isEmpty
           ? Center(
@@ -55,7 +62,6 @@ class HistoryScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Шапка: сортамент + материал + время
                           Row(children: [
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -83,8 +89,6 @@ class HistoryScreen extends StatelessWidget {
                                     fontFamily: 'Manrope')),
                           ]),
                           const SizedBox(height: 6),
-
-                          // Результат + количество в одной строке
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.baseline,
                             textBaseline: TextBaseline.alphabetic,
@@ -110,8 +114,6 @@ class HistoryScreen extends StatelessWidget {
                               ),
                             ],
                           ),
-
-                          // Погонный вес / вес 1 шт
                           if (e.result.linearMass != null)
                             Padding(
                               padding: const EdgeInsets.only(top: 2),
@@ -124,8 +126,6 @@ class HistoryScreen extends StatelessWidget {
                                     fontFamily: 'Manrope'),
                               ),
                             ),
-
-                          // Подсказка что можно восстановить
                           if (onRestore != null)
                             Padding(
                               padding: const EdgeInsets.only(top: 6),
