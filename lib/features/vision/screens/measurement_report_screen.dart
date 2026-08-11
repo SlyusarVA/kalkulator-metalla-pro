@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../screens/calc_screen.dart';
 import '../../../widgets/tabler_icon.dart';
 import '../models/measurement_models.dart';
 import '../services/measurement_history_service.dart';
@@ -67,10 +68,11 @@ class _MeasurementReportScreenState extends State<MeasurementReportScreen> {
     if (!_canTransferToCalculator) return;
     await upsertMeasurementReport(_report);
     if (!mounted) return;
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      '/calculator',
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => CalcScreen(initialReport: _report),
+      ),
       (route) => false,
-      arguments: _report,
     );
   }
 
